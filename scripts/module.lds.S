@@ -74,6 +74,7 @@ SECTIONS {
 		*(.text.._fips140_unchecked)
 	}
 #endif
+#endif
 }
 
 /* bring in arch-specific sections */
