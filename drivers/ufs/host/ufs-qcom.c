@@ -1127,6 +1127,8 @@ static int ufs_qcom_enable_hw_clk_gating(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err = 0;
+	struct device *dev = hba->dev;
+	struct device_node *np = dev->of_node;
 
 	/* Enable UTP internal clock gating */
 	ufshcd_writel(hba,
@@ -1151,8 +1153,22 @@ static int ufs_qcom_enable_hw_clk_gating(struct ufs_hba *hba)
 	if (err)
 		goto out;
 
-	err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
+	/*
+	 * As per HPG, ATTR_HW_CGC_EN bit should be enabled when operating at
+	 * more than 300mhz for target which support multi level clk scaling
+	 * and hence should be disable in UFS init sequence for those target.
+	 * For rest all other target set the default to 1 like earlier target.
+	 * CGC bit should be enabled for target supporting multilevel and
+	 * irrespective of type of UFS device.
+	 */
+	if (of_property_read_bool(np, "disable-cgc")) {
+		err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
+				PA_VS_CLK_CFG_REG_MASK1, PA_VS_CLK_CFG_REG);
+	} else {
+		err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
 				PA_VS_CLK_CFG_REG_MASK, PA_VS_CLK_CFG_REG);
+	}
+
 	if (err)
 		goto out;
 
