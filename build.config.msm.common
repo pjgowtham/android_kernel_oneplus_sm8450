@@ -106,15 +106,6 @@ function merge_defconfig_fragments() {
     ${KERNEL_DIR}/scripts/kconfig/merge_config.sh \
     -m -r -y ${DEFCONFIG_FRAGMENTS} | tee $output
   set +x
-  if grep -q -E -e "Previous value: [^=]+=[ym]" $output; then
-    echo "========================================================"
-    echo "ERROR! Detected overridden config!"
-    grep -C 1 -E -e "Previous value: [^=]+=[ym]" $output >&2
-    rm $output
-    if [ "${OPLUS_BUILD_DO}" != "true" ]; then
-      exit 1
-    fi
-  fi
   local temp_config=$(mktemp)
   (cd ${KERNEL_DIR} && KCONFIG_CONFIG=${temp_config} make "${TOOL_ARGS[@]}" O=${OUT_DIR} "${MAKE_ARGS[@]}" ${DEFCONFIG}) 2>&1 | tee $output
   if grep -q -e "warning:" $output; then
