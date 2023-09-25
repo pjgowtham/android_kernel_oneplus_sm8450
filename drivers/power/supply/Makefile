@@ -97,7 +97,9 @@ obj-$(CONFIG_CHARGER_UCS1002)	+= ucs1002_power.o
 obj-$(CONFIG_CHARGER_BD70528)	+= bd70528-charger.o
 obj-$(CONFIG_CHARGER_BD99954)	+= bd99954-charger.o
 obj-$(CONFIG_CHARGER_WILCO)	+= wilco-charger.o
-obj-$(CONFIG_QTI_BATTERY_CHARGER)	+= qti_battery_charger_main.o
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#obj-$(CONFIG_QTI_BATTERY_CHARGER)	+= qti_battery_charger_main.o
+#endif
 qti_battery_charger_main-y += qti_battery_charger.o qti_typec_class.o
 obj-$(CONFIG_RN5T618_POWER)	+= rn5t618_power.o
 obj-$(CONFIG_SCHGM_FLASH)       += schgm-flash.o
