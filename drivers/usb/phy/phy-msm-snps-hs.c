@@ -1577,7 +1577,6 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		}
 	}
 #endif
-
 	     /*
 	      * Some targets use PMOS LDOs, while others use NMOS LDOs,
 	      * but there is no support for NMOS LDOs whose load current threshold

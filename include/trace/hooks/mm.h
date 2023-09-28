@@ -25,14 +25,11 @@
 #include <linux/rwsem.h>
 
 #ifdef __GENKSYMS__
-struct slabinfo;
 struct cgroup_subsys_state;
 struct device;
 struct mem_cgroup;
 struct readahead_control;
 #else
-/* struct slabinfo */
-#include <../mm/slab.h>
 /* struct cgroup_subsys_state */
 #include <linux/cgroup-defs.h>
 /* struct device */

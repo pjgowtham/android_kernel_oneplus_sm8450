@@ -570,6 +570,7 @@ static int sysmon_start(struct rproc_subdev *subdev)
 	struct qcom_sysmon *sysmon = container_of(subdev, struct qcom_sysmon,
 						  subdev);
 	struct qcom_sysmon *target;
+	struct rproc *rproc = sysmon->rproc;
 
 	trace_rproc_qcom_event(dev_name(sysmon->rproc->dev.parent), SYSMON_SUBDEV_NAME, "start");
 
@@ -590,6 +591,7 @@ static int sysmon_start(struct rproc_subdev *subdev)
 		mutex_unlock(&target->state_lock);
 	}
 	mutex_unlock(&sysmon_lock);
+	pm_relax(rproc->dev.parent);
 
 	return 0;
 }

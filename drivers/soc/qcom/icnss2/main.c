@@ -4539,6 +4539,7 @@ static int icnss_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
 
+
 	if (priv->pon_gpio_control) {
 		ret = icnss_get_pinctrl(priv);
 		if (ret < 0) {
