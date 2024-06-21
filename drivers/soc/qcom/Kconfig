@@ -242,7 +242,11 @@ config QCOM_PCIE_PDC
 config QCOM_PDR_HELPERS
 	tristate
 	select QCOM_QMI_HELPERS
+	select QCOM_PDR_MSG
 	depends on NET
+
+config QCOM_PDR_MSG
+	tristate
 
 config QCOM_PANIC_ON_PDR_NOTIF_TIMEOUT
 	bool "Trigger kernel panic when PDR notification timeout expires"
