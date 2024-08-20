@@ -4072,9 +4072,11 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_populate_ref_clk_ctrl(hba);
 
 	/* Register vdd_hba vreg callback */
-	host->vdd_hba_reg_nb.notifier_call = ufs_qcom_vdd_hba_reg_notifier;
-	devm_regulator_register_notifier(hba->vreg_info.vdd_hba->reg,
+	if (hba->vreg_info.vdd_hba) {
+		host->vdd_hba_reg_nb.notifier_call = ufs_qcom_vdd_hba_reg_notifier;
+		devm_regulator_register_notifier(hba->vreg_info.vdd_hba->reg,
 					 &host->vdd_hba_reg_nb);
+	}
 
 	/* update phy revision information before calling phy_init() */
 
