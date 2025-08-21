@@ -46,6 +46,10 @@ source "drivers/soc/oplus/sensor/Kconfig"
 source "drivers/soc/oplus/oplus_consumer_ir/Kconfig"
 #endif /* OPLUS_FEATURE_SENSOR_CONSUMER_IR */
 
+#ifdef OPLUS_FEATURE_THERMAL_HORAE
+source "drivers/soc/oplus/thermal/Kconfig"
+#endif /* OPLUS_FEATURE_THERMAL_HORAE */
+
 #ifdef OPLUS_DFR_FEATURE
 source "drivers/soc/oplus/dfr/Kconfig"
 #endif /* OPLUS_DFR_FEATURE */
