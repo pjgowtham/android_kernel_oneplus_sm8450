@@ -82,3 +82,7 @@ obj-$(CONFIG_OPLUS_FEATURE_RECORD_MDMRST)     += oplus/mdmrst/
 #ifdef OPLUS_SUBSYS_SLEEP_MONITOR
 obj-$(CONFIG_OPLUS_SUBSYS_SLEEP_MONITOR)     += oplus/power/subsys_sleep_monitor/
 #endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
+
+#ifdef OPLUS_FEATURE_THERMAL_HORAE
+obj-$(CONFIG_HORAE_THERMAL_SHELL) += oplus/thermal/
+#endif /* OPLUS_FEATURE_THERMAL_HORAE */
