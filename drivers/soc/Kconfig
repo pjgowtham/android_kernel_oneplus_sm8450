@@ -30,10 +30,6 @@ config OPLUS_SYSTEM_KERNEL
   help
 	define this config to add oplus sytstem kernel feature
 
-#ifdef OPLUS_FEATURE_SUGOV_POWER_EFFIENCY
-source "kernel/oplus_cpu/cpufreq_effiency/Kconfig"
-#endif /* OPLUS_FEATURE_SUGOV_POWER_EFFIENCY */
-
 #ifdef OPLUS_FEATURE_MM_FEEDBACK
 source "drivers/soc/oplus/multimedia/Kconfig"
 #endif /* OPLUS_FEATURE_MM_FEEDBACK */
@@ -50,10 +46,6 @@ source "drivers/soc/oplus/sensor/Kconfig"
 source "drivers/soc/oplus/oplus_consumer_ir/Kconfig"
 #endif /* OPLUS_FEATURE_SENSOR_CONSUMER_IR */
 
-#ifdef OPLUS_FEATURE_OCH
-source "kernel/oplus_cpu/cpufreq_health/Kconfig"
-#endif /* OPLUS_FEATURE_OCH */
-
 #ifdef OPLUS_DFR_FEATURE
 source "drivers/soc/oplus/dfr/Kconfig"
 #endif /* OPLUS_DFR_FEATURE */
@@ -66,14 +58,6 @@ source "drivers/soc/oplus/power/midas/Kconfig"
 source "drivers/soc/oplus/dft/Kconfig"
 #endif /* ifdef OPLUS_FEATURE_DFT */
 
-#ifdef OPLUS_FEATURE_OMRG
-source "kernel/oplus_cpu/oplus_omrg/Kconfig"
-#endif /* OPLUS_FEATURE_OMRG */
-
-#ifdef OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING
-source "kernel/oplus_cpu/cpufreq_bouncing/Kconfig"
-#endif /* OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING */
-
 #ifdef OPLUS_FEATURE_BOOT
 source "drivers/soc/oplus/boot/Kconfig"
 #endif /* OPLUS_FEATURE_BOOT */
@@ -82,15 +66,9 @@ source "drivers/soc/oplus/boot/Kconfig"
 source "drivers/soc/oplus/mdmfeature/Kconfig"
 #endif /*OPLUS_FEATURE_MDMFEATURE*/
 
-#ifdef OPLUS_FEATURE_ABNORMAL_FLAG
-source "kernel/oplus_cpu/oplus_overload/Kconfig"
-#endif /* OPLUS_FEATURE_ABNORMAL_FLAG */
-
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
 source "drivers/soc/oplus/mdmrst/Kconfig"
 #endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
-
-source "kernel/oplus_cpu/uad/Kconfig"
 
 #ifdef OPLUS_SUBSYS_SLEEP_MONITOR
 source "drivers/soc/oplus/power/subsys_sleep_monitor/Kconfig"
