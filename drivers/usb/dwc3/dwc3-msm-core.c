@@ -6083,6 +6083,7 @@ static void msm_dwc3_perf_vote_enable(struct dwc3_msm *mdwc, bool enable)
 static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	u32 val;
 #endif
