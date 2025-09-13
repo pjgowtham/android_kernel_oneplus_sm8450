@@ -10,13 +10,11 @@
 #include <linux/err.h>
 #include <linux/iio/consumer.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
-#include <linux/suspend.h>
 #include <linux/thermal.h>
 
 #include "../thermal_core.h"
@@ -132,6 +130,11 @@ struct qpnp_tm_chip {
 	/* protects .thresh, .stage and chip registers */
 	struct mutex			lock;
 	bool				initialized;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct delayed_work ref_byp_detect_work;
+	bool need_check_ref_byp;
+#endif
 
 	struct iio_channel		*adc;
 	const long			(*temp_map)[THRESH_COUNT][STAGE_COUNT];
@@ -258,7 +261,7 @@ static int qpnp_tm_update_temp_no_adc(struct qpnp_tm_chip *chip)
 static int qpnp_tm_get_temp(void *data, int *temp)
 {
 	struct qpnp_tm_chip *chip = data;
-	int ret, mili_celsius, stage, stage_temp_min;
+	int ret, mili_celsius;
 
 	if (!temp)
 		return -EINVAL;
@@ -275,26 +278,9 @@ static int qpnp_tm_get_temp(void *data, int *temp)
 		if (ret < 0)
 			return ret;
 	} else {
-		mutex_lock(&chip->lock);
-		stage = qpnp_tm_get_temp_stage(chip);
-		if (stage < 0) {
-			mutex_unlock(&chip->lock);
-			return stage;
-		}
-		if (chip->subtype != QPNP_TM_SUBTYPE_GEN1)
-			stage = alarm_state_map[stage];
-		stage_temp_min = qpnp_tm_decode_temp(chip, stage);
-		mutex_unlock(&chip->lock);
-
 		ret = iio_read_channel_processed(chip->adc, &mili_celsius);
 		if (ret < 0)
 			return ret;
-
-		if (stage_temp_min > mili_celsius && stage_temp_min > 0) {
-			dev_dbg(chip->dev, "replacing ADC temp=%d with min stage[%d] temp=%d\n",
-				mili_celsius, stage, stage_temp_min);
-			mili_celsius = stage_temp_min;
-		}
 
 		chip->temp = mili_celsius;
 	}
@@ -491,6 +477,75 @@ static const struct thermal_zone_of_device_ops qpnp_tm_sensor_ops = {
 	.set_trip_temp = qpnp_tm_set_trip_temp,
 };
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define PMIC_IS_PM8350 48
+#define PMIC_IS_PM8350C 49
+#define PMIC_IS_PM8350B 50
+#define PMIC_IS_PMR735A 51
+#define REVID_PERPH_SUBTYPE 0x105
+#define MBG1_MODE_CTRL 0xB44
+#define PON_PBS_XVDD_RB_SPARE 0x88E
+#define TEMP_ALARM_INT_RT_STS 0xA10
+static void qpnp_tm_ref_byp_detect_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct qpnp_tm_chip *chip = container_of(dwork, struct qpnp_tm_chip, ref_byp_detect_work);
+	unsigned int val;
+	int ret;
+
+	/* Check if ref byp check is support*/
+	ret = regmap_read(chip->map, REVID_PERPH_SUBTYPE, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "failed to read pmic subtype,ret=%d\n", ret);
+		return;
+	}
+	dev_err(chip->dev, "pmic subtype=%u\n", val);
+
+	if (val == PMIC_IS_PM8350 || val == PMIC_IS_PM8350C
+			|| val == PMIC_IS_PM8350B || val == PMIC_IS_PMR735A) {
+		dev_err(chip->dev, "need to check ref_byp\n");
+	} else {
+		dev_err(chip->dev, "don't need to check ref_byp\n");
+		return;
+	}
+
+	/* check intterrupt real status*/
+	ret = regmap_read(chip->map, TEMP_ALARM_INT_RT_STS, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "failed to read pmic subtype,ret=%d\n", ret);
+		return;
+	}
+	dev_err(chip->dev, "interrupt real status=%u\n", val);
+
+	if (!(val & BIT(0))) {
+		dev_err(chip->dev, "only check when interrupt status=1\n");
+		return;
+	}
+
+	/* read flag*/
+	ret = regmap_read(chip->map, PON_PBS_XVDD_RB_SPARE, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "failed to read flag,ret=%d\n", ret);
+		return;
+	}
+	dev_err(chip->dev, "read flag=%d\n", val);
+
+	/* increase drive strength if flag=0, enable buffer if bit0 is set */
+	if (val == 0) {
+		ret = regmap_update_bits(chip->map, MBG1_MODE_CTRL, 0x1, 0x1);
+		ret |= regmap_update_bits(chip->map, PON_PBS_XVDD_RB_SPARE, 0x1, 0x1);
+	} else if (val & BIT(0)) {
+		ret = regmap_update_bits(chip->map, MBG1_MODE_CTRL, 0x4, 0x4);
+		ret |= regmap_update_bits(chip->map, PON_PBS_XVDD_RB_SPARE, 0x2, 0x2);
+	}
+
+	if (ret < 0)
+		dev_err(chip->dev, "failed to wirte 0xB44 or 0x88E,ret=%d\n", ret);
+
+	return;
+}
+#endif
+
 static int qpnp_tm_set_temp_dac_trip_temp(void *data, int trip, int temp)
 {
 	struct qpnp_tm_chip *chip = data;
@@ -530,6 +585,11 @@ static irqreturn_t qpnp_tm_isr(int irq, void *data)
 	struct qpnp_tm_chip *chip = data;
 
 	thermal_zone_device_update(chip->tz_dev, THERMAL_EVENT_UNSPECIFIED);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (chip->need_check_ref_byp)
+		schedule_delayed_work(&chip->ref_byp_detect_work, 0);
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -742,7 +802,7 @@ static int qpnp_tm_probe(struct platform_device *pdev)
 	const struct thermal_zone_of_device_ops *ops;
 	u8 type, subtype, dig_major, dig_minor;
 	u32 res;
-	int ret;
+	int ret, irq;
 
 	node = pdev->dev.of_node;
 
@@ -763,9 +823,9 @@ static int qpnp_tm_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return ret;
 
-	chip->irq = platform_get_irq(pdev, 0);
-	if (chip->irq < 0)
-		return chip->irq;
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return irq;
 
 	/* ADC based measurements are optional */
 	chip->adc = devm_iio_channel_get(&pdev->dev, "thermal");
@@ -853,6 +913,13 @@ static int qpnp_tm_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	chip->need_check_ref_byp = of_property_read_bool(node, "qcom,need_check_ref_byp");
+	if (chip->need_check_ref_byp)
+		dev_err(&pdev->dev, "need to check ref_byp\n");
+	INIT_DELAYED_WORK(&chip->ref_byp_detect_work, qpnp_tm_ref_byp_detect_work);
+#endif
+
 	ret = devm_request_threaded_irq(&pdev->dev, chip->irq, NULL,
 					qpnp_tm_isr, IRQF_ONESHOT,
 					node->name, chip);
@@ -864,77 +931,6 @@ static int qpnp_tm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int qpnp_tm_restore(struct device *dev)
-{
-	int ret = 0;
-	struct qpnp_tm_chip *chip = dev_get_drvdata(dev);
-	struct device_node *node = dev->of_node;
-	unsigned long flags;
-
-	if (chip->subtype == QPNP_TM_SUBTYPE_GEN2)
-		flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
-	else
-		flags = IRQF_TRIGGER_RISING;
-
-	if (chip->irq > 0) {
-		ret = devm_request_threaded_irq(dev, chip->irq, NULL,
-			qpnp_tm_isr, flags | IRQF_ONESHOT, node->name, chip);
-		if (ret < 0)
-			return ret;
-	}
-
-	ret = qpnp_tm_init(chip);
-	if (ret < 0)
-		dev_err(dev, "init failed\n");
-
-	return ret;
-}
-
-static void qpnp_tm_shutdown(struct platform_device *pdev)
-{
-	struct qpnp_tm_chip *chip = platform_get_drvdata(pdev);
-
-	if (chip->irq > 0)
-		devm_free_irq(chip->dev, chip->irq, chip);
-}
-
-static int qpnp_tm_freeze(struct device *dev)
-{
-	struct qpnp_tm_chip *chip = dev_get_drvdata(dev);
-
-	if (chip->irq > 0)
-		devm_free_irq(dev, chip->irq, chip);
-
-	return 0;
-}
-
-static int qpnp_tm_suspend(struct device *dev)
-{
-#ifdef CONFIG_DEEPSLEEP
-	if (mem_sleep_current == PM_SUSPEND_MEM)
-		return qpnp_tm_freeze(dev);
-#endif
-
-	return 0;
-}
-
-static int qpnp_tm_resume(struct device *dev)
-{
-#ifdef CONFIG_DEEPSLEEP
-	if (mem_sleep_current == PM_SUSPEND_MEM)
-		return qpnp_tm_restore(dev);
-#endif
-
-	return 0;
-}
-
-static const struct dev_pm_ops qpnp_tm_pm_ops = {
-	.freeze = qpnp_tm_freeze,
-	.restore = qpnp_tm_restore,
-	.suspend = qpnp_tm_suspend,
-	.resume = qpnp_tm_resume,
-};
-
 static const struct of_device_id qpnp_tm_match_table[] = {
 	{ .compatible = "qcom,spmi-temp-alarm" },
 	{ }
@@ -945,10 +941,8 @@ static struct platform_driver qpnp_tm_driver = {
 	.driver = {
 		.name = "spmi-temp-alarm",
 		.of_match_table = qpnp_tm_match_table,
-		.pm = &qpnp_tm_pm_ops,
 	},
 	.probe  = qpnp_tm_probe,
-	.shutdown = qpnp_tm_shutdown,
 };
 module_platform_driver(qpnp_tm_driver);
 
