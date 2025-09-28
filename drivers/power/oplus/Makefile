@@ -38,3 +38,11 @@ obj-$(CONFIG_OPLUS_WIRELESS_PEN) += wireless_pen/
 ifdef CONFIG_OPLUS_PD_EXT_SUPPORT
 obj-$(CONFIG_TCPC_CLASS) += pd_ext/
 endif
+
+ccflags-y += -Dprintk="do { } while (0)" \
+             -Dpr_debug="do { } while (0)" \
+             -Dpr_err="do { } while (0)" \
+             -Dchg_debug="do { } while (0)" \
+             -Dchg_err="do { } while (0)" \
+             -Dcharger_xlog_printk="do { } while (0)" \
+             -Dvooc_xlog_printk="do { } while (0)"
