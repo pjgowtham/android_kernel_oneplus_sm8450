@@ -19,13 +19,7 @@
 #include <linux/types.h>
 #include <linux/usb/repeater.h>
 
-#define EUSB2_3P0_VOL_MIN			3075000 /* uV */
-#define EUSB2_3P0_VOL_MAX			3300000 /* uV */
-#define EUSB2_3P0_HPM_LOAD			3500	/* uA */
-
-#define EUSB2_1P8_VOL_MIN			1800000 /* uV */
-#define EUSB2_1P8_VOL_MAX			1800000 /* uV */
-#define EUSB2_1P8_HPM_LOAD			32000	/* uA */
+#define NUM_SUPPLIES			2
 
 /* NXP eUSB2 repeater registers */
 #define RESET_CONTROL			0x01
@@ -82,8 +76,7 @@ struct eusb2_repeater {
 	struct regmap			*regmap;
 	const struct i2c_repeater_chip	*chip;
 	u16				reg_base;
-	struct regulator		*vdd18;
-	struct regulator		*vdd3;
+	struct regulator_bulk_data	*supplies;
 	bool				power_enabled;
 
 	struct gpio_desc		*reset_gpiod;
@@ -152,92 +145,26 @@ static int eusb2_repeater_power(struct eusb2_repeater *er, bool on)
 		return 0;
 	}
 
-	if (!on)
-		goto disable_vdd3;
+	if (!on) {
+		ret = regulator_bulk_disable(NUM_SUPPLIES, er->supplies);
+		if (ret < 0) {
+			dev_err(er->ur.dev, "Unable to turn off regulators:%d\n", ret);
+			return ret;
+		}
 
-	ret = regulator_set_load(er->vdd18, EUSB2_1P8_HPM_LOAD);
+		er->power_enabled = false;
+		pr_debug("%s(): eUSB2 repeater regulators are turned OFF.\n", __func__);
+		return ret;
+	}
+
+	ret = regulator_bulk_enable(NUM_SUPPLIES, er->supplies);
 	if (ret < 0) {
-		dev_err(er->ur.dev, "Unable to set HPM of vdd12:%d\n", ret);
-		goto err_vdd18;
-	}
-
-	ret = regulator_set_voltage(er->vdd18, EUSB2_1P8_VOL_MIN,
-						EUSB2_1P8_VOL_MAX);
-	if (ret) {
-		dev_err(er->ur.dev,
-				"Unable to set voltage for vdd18:%d\n", ret);
-		goto put_vdd18_lpm;
-	}
-
-	ret = regulator_enable(er->vdd18);
-	if (ret) {
-		dev_err(er->ur.dev, "Unable to enable vdd18:%d\n", ret);
-		goto unset_vdd18;
-	}
-
-	ret = regulator_set_load(er->vdd3, EUSB2_3P0_HPM_LOAD);
-	if (ret < 0) {
-		dev_err(er->ur.dev, "Unable to set HPM of vdd3:%d\n", ret);
-		goto disable_vdd18;
-	}
-
-	ret = regulator_set_voltage(er->vdd3, EUSB2_3P0_VOL_MIN,
-						EUSB2_3P0_VOL_MAX);
-	if (ret) {
-		dev_err(er->ur.dev,
-				"Unable to set voltage for vdd3:%d\n", ret);
-		goto put_vdd3_lpm;
-	}
-
-	ret = regulator_enable(er->vdd3);
-	if (ret) {
-		dev_err(er->ur.dev, "Unable to enable vdd3:%d\n", ret);
-		goto unset_vdd3;
+		dev_err(er->ur.dev, "Unable to turn on regulators:%d\n", ret);
+		return ret;
 	}
 
 	er->power_enabled = true;
 	pr_debug("%s(): eUSB2 repeater egulators are turned ON.\n", __func__);
-	return ret;
-
-disable_vdd3:
-	ret = regulator_disable(er->vdd3);
-	if (ret)
-		dev_err(er->ur.dev, "Unable to disable vdd3:%d\n", ret);
-
-unset_vdd3:
-	ret = regulator_set_voltage(er->vdd3, 0, EUSB2_3P0_VOL_MAX);
-	if (ret)
-		dev_err(er->ur.dev,
-			"Unable to set (0) voltage for vdd3:%d\n", ret);
-
-put_vdd3_lpm:
-	ret = regulator_set_load(er->vdd3, 0);
-	if (ret < 0)
-		dev_err(er->ur.dev, "Unable to set (0) HPM of vdd3\n");
-
-disable_vdd18:
-	ret = regulator_disable(er->vdd18);
-	if (ret)
-		dev_err(er->ur.dev, "Unable to disable vdd18:%d\n", ret);
-
-unset_vdd18:
-	ret = regulator_set_voltage(er->vdd18, 0, EUSB2_1P8_VOL_MAX);
-	if (ret)
-		dev_err(er->ur.dev,
-			"Unable to set (0) voltage for vdd18:%d\n", ret);
-
-put_vdd18_lpm:
-	ret = regulator_set_load(er->vdd18, 0);
-	if (ret < 0)
-		dev_err(er->ur.dev, "Unable to set LPM of vdd18\n");
-
-	/* case handling when regulator turning on failed */
-	if (!er->power_enabled)
-		return -EINVAL;
-
-err_vdd18:
-	er->power_enabled = false;
-	dev_dbg(er->ur.dev, "eUSB2 repeater's regulators are turned OFF.\n");
 	return ret;
 }
 
@@ -302,6 +229,16 @@ static int eusb2_repeater_powerdown(struct usb_repeater *ur)
 	return eusb2_repeater_power(er, false);
 }
 
+static const struct regulator_bulk_data eusb2_repeater_supplies[NUM_SUPPLIES] = {
+	{
+		.supply = "vdd3v3",
+		.init_load_uA = 3500,
+	}, {
+		.supply = "vdd1v8",
+		.init_load_uA = 32000,
+	}
+};
+
 static struct i2c_repeater_chip repeater_chip[] = {
 	[NXP_REPEATER] = {
 		.repeater_type = NXP_REPEATER,
@@ -351,13 +288,10 @@ static int eusb2_repeater_i2c_probe(struct i2c_client *client)
 	if (ret < 0)
 		return dev_err_probe(dev, ret, "failed to get reg base address\n");
 
-	er->vdd3 = devm_regulator_get(dev, "vdd3");
-	if (IS_ERR(er->vdd3))
-		return dev_err_probe(dev, PTR_ERR(er->vdd3), "unable to get vdd3 supply\n");
-
-	er->vdd18 = devm_regulator_get(dev, "vdd18");
-	if (IS_ERR(er->vdd18))
-		return dev_err_probe(dev, PTR_ERR(er->vdd18), "unable to get vdd18 supply\n");
+	ret = devm_regulator_bulk_get_const(dev, NUM_SUPPLIES,
+			eusb2_repeater_supplies, &er->supplies);
+	if (ret < 0)
+		return dev_err_probe(dev, ret, "unable to parse regulators from dt\n");
 
 	er->reset_gpiod = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(er->reset_gpiod))
