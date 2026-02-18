@@ -2127,7 +2127,7 @@ static int ufs_qcom_icc_set_bw(struct ufs_qcom_host *host, u32 mem_bw, u32 cfg_b
 	struct device *dev = host->hba->dev;
 	int ret;
 
-	ret = icc_set_bw(host->icc_ddr, 0, mem_bw);
+	ret = icc_set_bw(host->icc_ddr, mem_bw, 0);
 	if (ret < 0) {
 		dev_err(dev, "failed to set bandwidth request: %d\n", ret);
 		return ret;
