@@ -1,10 +1,5 @@
 # Add unprotected modules corresponding to each platform
 _unprotected_modules_map = {
-    "sun": [
-        # keep sorted
-        "drivers/block/zram/zram.ko",
-        "mm/zsmalloc.ko",
-    ],
 }
 
 def get_unprotected_vendor_modules_list(msm_target = None):
