@@ -172,6 +172,7 @@ def _define_kernel_build(
         kmi_symbol_list = "android/abi_gki_aarch64_qcom" if define_abi_targets else None,
         additional_kmi_symbol_lists = ["{}_all_kmi_symbol_lists".format(base_kernel)] if define_abi_targets else None,
         collect_unstripped_modules = define_abi_targets,
+        strip_modules = True,
         visibility = ["//visibility:public"],
     )
 
