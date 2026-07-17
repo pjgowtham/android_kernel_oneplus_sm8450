@@ -403,6 +403,7 @@ static int qcom_ice_program_wrapped_key(struct qcom_ice *ice,
 	if (err) {
 		pr_err("%s:SCM call Error: 0x%x slot %d\n", __func__, err,
 		       slot);
+		qtee_shmbridge_free_shm(&shm);
 		return err;
 	}
 
