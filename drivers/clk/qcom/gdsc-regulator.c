@@ -478,7 +478,7 @@ static int gdsc_disable(struct regulator_dev *rdev)
 	struct regulator_dev *parent_rdev;
 	uint32_t regval;
 	int i, ret = 0;
-	bool lock = false;
+	bool lock = false, hw_ctrl_mode;
 
 	if (rdev->supply) {
 		parent_rdev = rdev->supply->rdev;
@@ -504,11 +504,7 @@ static int gdsc_disable(struct regulator_dev *rdev)
 	}
 
 	regmap_read(sc->regmap, REG_OFFSET, &regval);
-	if (regval & HW_CONTROL_MASK) {
-		dev_warn(&rdev->dev, "Invalid Disable while %s is under HW control\n",
-				sc->rdesc.name);
-		return -EBUSY;
-	}
+	hw_ctrl_mode = regval & HW_CONTROL_MASK;
 
 	if (sc->clk_ctrl_count)
 		gdsc_clk_ctrl(sc, false);
@@ -521,7 +517,7 @@ static int gdsc_disable(struct regulator_dev *rdev)
 	/* Delay to account for staggered memory powerdown. */
 	udelay(1);
 
-	if (sc->skip_disable && !sc->bypass_skip_disable) {
+	if (hw_ctrl_mode || (sc->skip_disable && !sc->bypass_skip_disable)) {
 		/*
 		 * Don't change the GDSCR register state on disable.  AOP will
 		 * handle this during system sleep.
