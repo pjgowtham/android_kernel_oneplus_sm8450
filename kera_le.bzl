@@ -271,8 +271,6 @@ def define_kera_le():
         "drivers/usb/gadget/function/usb_f_cdev.ko",
         "drivers/usb/gadget/function/usb_f_gsi.ko",
         "drivers/usb/gadget/function/usb_f_qdss.ko",
-        "drivers/usb/host/xhci-pci.ko",
-        "drivers/usb/host/xhci-pci-renesas.ko",
         "drivers/usb/host/xhci-sideband.ko",
         "drivers/usb/phy/phy-generic.ko",
         "drivers/usb/phy/phy-msm-m31-eusb2.ko",
