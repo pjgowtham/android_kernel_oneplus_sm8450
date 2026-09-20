@@ -662,7 +662,7 @@ static void qcom_pdm_remove(struct auxiliary_device *auxdev)
 }
 
 static const struct auxiliary_device_id qcom_pdm_table[] = {
-	{ .name = "qcom_common.pd-mapper" },
+	{ .name = "rproc_qcom_common.pd-mapper" },
 	{},
 };
 MODULE_DEVICE_TABLE(auxiliary, qcom_pdm_table);
