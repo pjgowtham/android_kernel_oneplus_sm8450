@@ -5527,13 +5527,10 @@ static bool should_run_aging(struct lruvec *lruvec, unsigned long max_seq,
 		}
 	}
 
-	/* try to scrape all its memory if this memcg was deleted */
-	if (!mem_cgroup_online(memcg)) {
-		*nr_to_scan = total;
-		return false;
-	}
-
 	*nr_to_scan = total >> sc->priority;
+	/* scrape out the remaining pages of a deleted memcg */
+	if (!*nr_to_scan && !mem_cgroup_online(memcg))
+		*nr_to_scan = min(total, SWAP_CLUSTER_MAX);
 
 	/*
 	 * The aging tries to be lazy to reduce the overhead, while the eviction
@@ -5700,7 +5697,7 @@ static int shrink_one(struct lruvec *lruvec, struct scan_control *sc)
 	if (success && mem_cgroup_online(memcg))
 		return MEMCG_LRU_YOUNG;
 
-	if (!success && lruvec_is_sizable(lruvec, sc))
+	if (!success && mem_cgroup_online(memcg) && lruvec_is_sizable(lruvec, sc))
 		return 0;
 
 	/* one retry if offlined or too small */

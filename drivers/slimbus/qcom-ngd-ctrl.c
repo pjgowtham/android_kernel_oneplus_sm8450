@@ -1946,7 +1946,7 @@ static int of_qcom_slim_ngd_register(struct device *parent,
 			of_node_put(node);
 			return ret;
 		}
-		ngd->pdev->dev.of_node = node;
+		ngd->pdev->dev.of_node = of_node_get(node);
 		ctrl->ngd = ngd;
 
 		ret = platform_device_add(ngd->pdev);
@@ -1991,6 +1991,13 @@ static ssize_t debug_mask_store(struct device *device,
 
 static DEVICE_ATTR_RW(debug_mask);
 
+static void qcom_slim_ngd_unregister(struct qcom_slim_ngd_ctrl *ctrl)
+{
+	struct qcom_slim_ngd *ngd = ctrl->ngd;
+
+	platform_device_del(ngd->pdev);
+}
+
 static int qcom_slim_ngd_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -2025,6 +2032,8 @@ static int qcom_slim_ngd_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev,
 			"QMI service registration failed:%d\n", ret);
+		pm_runtime_dont_use_autosuspend(dev);
+		pm_runtime_disable(dev);
 		goto err;
 	}
 
@@ -2186,9 +2195,8 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		goto err_pdr_lookup;
 	}
 
-	platform_driver_register(&qcom_slim_ngd_driver);
 	SLIM_INFO(ctrl, "NGD SB controller is up!\n");
-	return 0;
+	return of_qcom_slim_ngd_register(dev, ctrl);
 
 err_pdr_lookup:
 	pdr_handle_release(ctrl->pdr);
@@ -2211,7 +2219,7 @@ static int qcom_slim_ngd_ctrl_remove(struct platform_device *pdev)
 {
 	struct qcom_slim_ngd_ctrl *ctrl = platform_get_drvdata(pdev);
 
-	platform_driver_unregister(&qcom_slim_ngd_driver);
+	qcom_slim_ngd_unregister(ctrl);
 	if (ctrl->sysfs_created)
 		sysfs_remove_file(&pdev->dev.kobj,
 				  &dev_attr_debug_mask.attr);
@@ -2226,6 +2234,7 @@ static int qcom_slim_ngd_remove(struct platform_device *pdev)
 {
 	struct qcom_slim_ngd_ctrl *ctrl = platform_get_drvdata(pdev);
 
+	pm_runtime_dont_use_autosuspend(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	pdr_handle_release(ctrl->pdr);
 	qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
@@ -2315,6 +2324,28 @@ static struct platform_driver qcom_slim_ngd_driver = {
 	},
 };
 
-module_platform_driver(qcom_slim_ngd_ctrl_driver);
+static int qcom_slim_ngd_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&qcom_slim_ngd_driver);
+	if (ret)
+		return ret;
+
+	ret = platform_driver_register(&qcom_slim_ngd_ctrl_driver);
+	if (ret)
+		platform_driver_unregister(&qcom_slim_ngd_driver);
+
+	return ret;
+}
+
+static void qcom_slim_ngd_exit(void)
+{
+	platform_driver_unregister(&qcom_slim_ngd_ctrl_driver);
+	platform_driver_unregister(&qcom_slim_ngd_driver);
+}
+
+module_init(qcom_slim_ngd_init);
+module_exit(qcom_slim_ngd_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Qualcomm SLIMBus NGD controller");

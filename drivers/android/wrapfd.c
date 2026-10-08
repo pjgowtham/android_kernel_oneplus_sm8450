@@ -286,6 +286,7 @@ static void init_io_req(struct wrap_io_ctx *io_ctx, struct wrap_io_req *req, lof
 			req->iov[nr_segs].iov_len = PAGE_SIZE;
 			req_len -= PAGE_SIZE;
 			nr_segs++;
+			start_bounce_idx++;
 		}
 	}
 
@@ -356,6 +357,7 @@ static int wrap_io_prepare(struct file *file, loff_t file_offs, u8 *dst_buf, lof
 	size_t start_bounce_len = 0;
 	loff_t dio_buf_offs = buf_offs;
 	size_t dio_buf_len = 0;
+	loff_t dio_buf_limit;
 	size_t end_bounce_len;
 	size_t nr_bounce_pages;
 	size_t file_read_len = dio_aligned_len(file_offs, len);
@@ -390,7 +392,8 @@ static int wrap_io_prepare(struct file *file, loff_t file_offs, u8 *dst_buf, lof
 	 * the range we're reading into, and since direct I/O is done in units of pages,
 	 * ensure that there is at least a page to read.
 	 */
-	if (dio_buf_offs <= (buf_end - PAGE_SIZE))
+	if (!check_sub_overflow(buf_end, PAGE_SIZE, &dio_buf_limit) &&
+	    dio_buf_offs <= dio_buf_limit)
 		dio_buf_len = PAGE_ALIGN_DOWN(buf_end) - dio_buf_offs;
 
 	/*
