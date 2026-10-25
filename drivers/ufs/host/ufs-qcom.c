@@ -1162,6 +1162,8 @@ static int ufs_qcom_enable_hw_clk_gating(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err = 0;
+	struct device *dev = hba->dev;
+	struct device_node *np = dev->of_node;
 
 	/* Enable UTP internal clock gating */
 	ufshcd_writel(hba,
@@ -1186,8 +1188,22 @@ static int ufs_qcom_enable_hw_clk_gating(struct ufs_hba *hba)
 	if (err)
 		goto out;
 
-	err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
+	/*
+	 * As per HPG, ATTR_HW_CGC_EN bit should be enabled when operating at
+	 * more than 300mhz for target which support multi level clk scaling
+	 * and hence should be disable in UFS init sequence for those target.
+	 * For rest all other target set the default to 1 like earlier target.
+	 * CGC bit should be enabled for target supporting multilevel and
+	 * irrespective of type of UFS device.
+	 */
+	if (of_property_read_bool(np, "disable-cgc")) {
+		err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
+				PA_VS_CLK_CFG_REG_MASK1, PA_VS_CLK_CFG_REG);
+	} else {
+		err = ufshcd_dme_rmw(hba, PA_VS_CLK_CFG_REG_MASK,
 				PA_VS_CLK_CFG_REG_MASK, PA_VS_CLK_CFG_REG);
+	}
+
 	if (err)
 		goto out;
 
@@ -2166,7 +2182,7 @@ static int ufs_qcom_icc_set_bw(struct ufs_qcom_host *host, u32 mem_bw, u32 cfg_b
 	struct device *dev = host->hba->dev;
 	int ret;
 
-	ret = icc_set_bw(host->icc_ddr, 0, mem_bw);
+	ret = icc_set_bw(host->icc_ddr, mem_bw, 0);
 	if (ret < 0) {
 		dev_err(dev, "failed to set bandwidth request: %d\n", ret);
 		return ret;
@@ -4163,9 +4179,11 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_populate_ref_clk_ctrl(hba);
 
 	/* Register vdd_hba vreg callback */
-	host->vdd_hba_reg_nb.notifier_call = ufs_qcom_vdd_hba_reg_notifier;
-	devm_regulator_register_notifier(hba->vreg_info.vdd_hba->reg,
+	if (hba->vreg_info.vdd_hba) {
+		host->vdd_hba_reg_nb.notifier_call = ufs_qcom_vdd_hba_reg_notifier;
+		devm_regulator_register_notifier(hba->vreg_info.vdd_hba->reg,
 					 &host->vdd_hba_reg_nb);
+	}
 
 	/* update phy revision information before calling phy_init() */
 

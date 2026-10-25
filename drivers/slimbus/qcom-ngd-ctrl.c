@@ -2196,7 +2196,7 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 	}
 
 	SLIM_INFO(ctrl, "NGD SB controller is up!\n");
-	return of_qcom_slim_ngd_register(dev, ctrl);
+	return 0;
 
 err_pdr_lookup:
 	pdr_handle_release(ctrl->pdr);

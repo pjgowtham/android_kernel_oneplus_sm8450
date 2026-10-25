@@ -146,6 +146,7 @@ struct qcom_adsp {
 
 	struct qcom_rproc_glink glink_subdev;
 	struct qcom_rproc_subdev smd_subdev;
+	struct qcom_rproc_pdm pdm_subdev;
 	struct qcom_rproc_ssr ssr_subdev;
 	struct qcom_sysmon *sysmon;
 
@@ -1514,6 +1515,7 @@ static int adsp_probe(struct platform_device *pdev)
 
 	qcom_add_glink_subdev(rproc, &adsp->glink_subdev, desc->ssr_name);
 	qcom_add_smd_subdev(rproc, &adsp->smd_subdev);
+	qcom_add_pdm_subdev(rproc, &adsp->pdm_subdev);
 	adsp->sysmon = qcom_add_sysmon_subdev(rproc,
 					      desc->sysmon_name,
 					      desc->ssctl_id);
@@ -1581,6 +1583,7 @@ static void adsp_remove(struct platform_device *pdev)
 	qcom_remove_glink_subdev(adsp->rproc, &adsp->glink_subdev);
 	qcom_remove_sysmon_subdev(adsp->sysmon);
 	qcom_remove_smd_subdev(adsp->rproc, &adsp->smd_subdev);
+	qcom_remove_pdm_subdev(adsp->rproc, &adsp->pdm_subdev);
 	qcom_remove_ssr_subdev(adsp->rproc, &adsp->ssr_subdev);
 	if (adsp->check_status)
 		atomic_notifier_chain_unregister(&panic_notifier_list, &adsp->panic_blk);
@@ -2492,6 +2495,60 @@ static const struct adsp_data kera_wpss_resource = {
 	.ssctl_id = 0x19,
 };
 
+static const struct adsp_data waipio_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.auto_boot = false,
+	.load_state = "adsp",
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data waipio_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.pas_id = 18,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.auto_boot = false,
+	.load_state = "cdsp",
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
+static const struct adsp_data waipio_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.minidump_id = 3,
+	.both_dumps = true,
+	.uses_elf64 = true,
+	.auto_boot = false,
+	.decrypt_shutdown = true,
+	.load_state = "modem",
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.ssctl_id = 0x12,
+	.dma_phys_below_32b = true,
+};
+
+static const struct adsp_data waipio_slpi_resource = {
+	.crash_reason_smem = 424,
+	.firmware_name = "slpi.mdt",
+	.pas_id = 12,
+	.uses_elf64 = true,
+	.auto_boot = false,
+	.load_state = "slpi",
+	.ssr_name = "dsps",
+	.sysmon_name = "slpi",
+	.ssctl_id = 0x16,
+};
+
 static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,msm8226-adsp-pil", .data = &msm8996_adsp_resource},
 	{ .compatible = "qcom,msm8953-adsp-pil", .data = &msm8996_adsp_resource},
@@ -2575,6 +2632,10 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,monaco-modem-pas", .data = &monaco_modem_resource},
 	{ .compatible = "qcom,tuna-wpss-pas", .data = &tuna_wpss_resource},
 	{ .compatible = "qcom,kera-wpss-pas", .data = &kera_wpss_resource},
+	{ .compatible = "qcom,waipio-adsp-pas", .data = &waipio_adsp_resource},
+	{ .compatible = "qcom,waipio-cdsp-pas", .data = &waipio_cdsp_resource},
+	{ .compatible = "qcom,waipio-slpi-pas", .data = &waipio_slpi_resource},
+	{ .compatible = "qcom,waipio-modem-pas", .data = &waipio_mpss_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);

@@ -6204,7 +6204,7 @@ static int dwc3_msm_register_interrupts(struct platform_device *pdev)
 	int i;
 
 	for (i = 0; i < USB_MAX_IRQ; i++) {
-		mdwc->wakeup_irq[i].irq = platform_get_irq_byname(pdev,
+		mdwc->wakeup_irq[i].irq = platform_get_irq_byname_optional(pdev,
 					usb_irq_info[i].name);
 		if (mdwc->wakeup_irq[i].irq < 0) {
 			/* pwr_evnt_irq is only mandatory irq */
@@ -6307,7 +6307,7 @@ static int dwc3_msm_check_extcon_prop(struct platform_device *pdev)
 	return ret;
 }
 
-static void vbus_regulator_get(struct dwc3_msm *mdwc)
+static int vbus_regulator_get(struct dwc3_msm *mdwc)
 {
 	/*
 	 * The vbus_reg pointer could have multiple values
@@ -6317,13 +6317,16 @@ static void vbus_regulator_get(struct dwc3_msm *mdwc)
 	 */
 	mdwc->vbus_reg = devm_regulator_get_optional(mdwc->dev,
 						"vbus_dwc3");
-	if (IS_ERR(mdwc->vbus_reg)) {
-		dev_err(mdwc->dev, "Unable to get vbus regulator err: %ld\n",
-							PTR_ERR(mdwc->vbus_reg));
-		mdwc->vbus_reg = NULL;
-		return;
-	}
+	if (!IS_ERR(mdwc->vbus_reg))
+		return 0;
 
+	/* regulators may not be ready, so retry again later */
+	if (PTR_ERR(mdwc->vbus_reg) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
+	mdwc->vbus_reg = NULL;
+
+	return 0;
 }
 
 static int dwc3_msm_probe(struct platform_device *pdev)
@@ -6513,7 +6516,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	pm_runtime_use_autosuspend(mdwc->dev);
 	device_init_wakeup(mdwc->dev, 1);
 
-	vbus_regulator_get(mdwc);
+	ret = vbus_regulator_get(mdwc);
+	if (ret < 0)
+		goto err;
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);

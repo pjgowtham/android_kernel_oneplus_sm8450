@@ -107,6 +107,13 @@ enum {
 	AOSS_SHUTDOWN_MSG,
 };
 
+static const char * const drv_names_waipio[] = {
+	"TZ", "HYP", "HLOS", "L3", "SECPROC", "AUDIO", "SENSOR", "AOP",
+	"DEBUG", "GPU", "DISPLAY", "COMPUTE_DSP", "TME_SW", "TME_HW",
+	"MDM SW", "MDM HW", "WLAN RF", "WLAN BB", "DDR AUX", "ARC CPRF",
+	""
+};
+
 static const char * const drv_names_kalama[][MAX_DRV_NAMES] = {
 	[CXPC_DRV_NAME] = {"TZ", "HYP", "HLOS", "L3", "SECPROC", "AUDIO", "AOP", "DEBUG",
 			"GPU", "DISPLAY", "COMPUTE_DSP", "TME_SW", "TME_HW", "MDM SW",
@@ -563,6 +570,8 @@ static void vx_create_debug_nodes(struct dentry *root, struct vx_platform_data *
 }
 
 static const struct of_device_id drv_match_table[] = {
+	{ .compatible = "qcom,sys-pm-waipio",
+	  .data = drv_names_waipio },
 	{ .compatible = "qcom,sys-pm-kalama",
 	  .data = drv_names_kalama },
 	{ .compatible = "qcom,sys-pm-pineapple",

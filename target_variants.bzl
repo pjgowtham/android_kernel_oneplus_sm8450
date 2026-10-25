@@ -4,6 +4,7 @@ targets = [
     "parrot",
     "pineapple",
     "sun",
+    "waipio",
 ]
 
 la_variants = [

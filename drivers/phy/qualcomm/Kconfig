@@ -189,6 +189,17 @@ config PHY_QCOM_UFS_V4_WAIPIO
 	  By incorporating support for UFS phy on Waipio chipsets, users
 	  can take advantage of the benefits offered by WAIPIO UFS PHY.
 
+config PHY_QCOM_UFS_V4_CAPE
+	tristate "Qualcomm Technologies, Inc. UFS V4 CAPE"
+	depends on PHY_QCOM_UFS
+	help
+	  Support for UFS phy present on QCOM Cape chipsets is essential
+	  for enabling UFS on Cape chipsets.
+	  To compile this driver as a module, users can choose "M" to have
+	  the flexibility of loading and unloading the driver as needed.
+	  By incorporating support for UFS phy on Cape chipsets, users
+	  can take advantage of the benefits offered by CAPE UFS PHY.
+
 endif
 
 config PHY_QCOM_QUSB2

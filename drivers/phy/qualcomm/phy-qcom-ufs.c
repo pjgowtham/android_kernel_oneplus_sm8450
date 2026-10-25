@@ -702,6 +702,8 @@ EXPORT_SYMBOL(ufs_qcom_phy_save_controller_version);
 void ufs_qcom_phy_set_src_clk_h8_enter(struct phy *generic_phy)
 {
 	struct ufs_qcom_phy *ufs_qcom_phy = get_ufs_qcom_phy(generic_phy);
+	struct device *dev = ufs_qcom_phy->dev;
+	int err;
 
 	if (!ufs_qcom_phy->rx_sym0_mux_clk || !ufs_qcom_phy->rx_sym1_mux_clk ||
 		!ufs_qcom_phy->tx_sym0_mux_clk || !ufs_qcom_phy->ref_clk_src)
@@ -712,15 +714,31 @@ void ufs_qcom_phy_set_src_clk_h8_enter(struct phy *generic_phy)
 	 * clocks according to the UFS Host Controller Hardware
 	 * Programming Guide's "Hibernate enter with power collapse".
 	 */
-	clk_set_parent(ufs_qcom_phy->rx_sym0_mux_clk, ufs_qcom_phy->ref_clk_src);
-	clk_set_parent(ufs_qcom_phy->rx_sym1_mux_clk, ufs_qcom_phy->ref_clk_src);
-	clk_set_parent(ufs_qcom_phy->tx_sym0_mux_clk, ufs_qcom_phy->ref_clk_src);
+	err = clk_set_parent(ufs_qcom_phy->rx_sym0_mux_clk,
+			     ufs_qcom_phy->ref_clk_src);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail rx_sym0_mux_clk %d\n",
+			__func__, err);
+
+	err = clk_set_parent(ufs_qcom_phy->rx_sym1_mux_clk,
+			     ufs_qcom_phy->ref_clk_src);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail rx_sym1_mux_clk %d\n",
+			__func__, err);
+
+	err = clk_set_parent(ufs_qcom_phy->tx_sym0_mux_clk,
+			     ufs_qcom_phy->ref_clk_src);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail tx_sym0_mux_clk %d\n",
+			__func__, err);
 }
 EXPORT_SYMBOL(ufs_qcom_phy_set_src_clk_h8_enter);
 
 void ufs_qcom_phy_set_src_clk_h8_exit(struct phy *generic_phy)
 {
 	struct ufs_qcom_phy *ufs_qcom_phy = get_ufs_qcom_phy(generic_phy);
+	struct device *dev = ufs_qcom_phy->dev;
+	int err;
 
 	if (!ufs_qcom_phy->rx_sym0_mux_clk ||
 		!ufs_qcom_phy->rx_sym1_mux_clk ||
@@ -735,9 +753,23 @@ void ufs_qcom_phy_set_src_clk_h8_exit(struct phy *generic_phy)
 	 * section "Hibernate exit from power collapse". Select phy clocks
 	 * as source of the PHY symbol clocks.
 	 */
-	clk_set_parent(ufs_qcom_phy->rx_sym0_mux_clk, ufs_qcom_phy->rx_sym0_phy_clk);
-	clk_set_parent(ufs_qcom_phy->rx_sym1_mux_clk, ufs_qcom_phy->rx_sym1_phy_clk);
-	clk_set_parent(ufs_qcom_phy->tx_sym0_mux_clk, ufs_qcom_phy->tx_sym0_phy_clk);
+	err = clk_set_parent(ufs_qcom_phy->rx_sym0_mux_clk,
+			     ufs_qcom_phy->rx_sym0_phy_clk);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail rx_sym0_mux_clk %d\n",
+			__func__, err);
+
+	err = clk_set_parent(ufs_qcom_phy->rx_sym1_mux_clk,
+			     ufs_qcom_phy->rx_sym1_phy_clk);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail rx_sym1_mux_clk %d\n",
+			__func__, err);
+
+	err = clk_set_parent(ufs_qcom_phy->tx_sym0_mux_clk,
+			     ufs_qcom_phy->tx_sym0_phy_clk);
+	if (err)
+		dev_err_ratelimited(dev, "%s: fail tx_sym0_mux_clk %d\n",
+			__func__, err);
 }
 EXPORT_SYMBOL(ufs_qcom_phy_set_src_clk_h8_exit);
 

@@ -13,6 +13,7 @@
 #include <scsi/scsi_device.h>
 #include <linux/usb/dwc3-msm.h>
 #include <linux/usb/composite.h>
+#include <linux/usb/ch9.h>
 #include <linux/usb/android_configfs_uevent.h>
 #include "core.h"
 #include "debug-ipc.h"
@@ -79,6 +80,47 @@ static int exit_dwc3_suspend_common(struct kretprobe_instance *ri,
 	return 0;
 }
 
+/**
+ * is_uvc_function_active - Check if UVC function is present in USB composition
+ * @dwc: pointer to dwc3 structure
+ *
+ * Returns true if UVC (USB Video Class) function is active in the current
+ * USB gadget composition, false otherwise.
+ */
+static bool is_uvc_function_active(struct dwc3 *dwc)
+{
+	struct usb_gadget *gadget;
+	struct usb_composite_dev *cdev;
+	struct usb_configuration *config;
+	struct usb_function *func;
+
+	if (!dwc || !dwc->gadget)
+		return false;
+
+	gadget = dwc->gadget;
+	if (!gadget->ep0 || !gadget->ep0->driver_data)
+		return false;
+
+	cdev = get_gadget_data(gadget);
+	if (!cdev)
+		return false;
+
+	/* Iterate through all configurations */
+	list_for_each_entry(config, &cdev->configs, list) {
+		/* Check each function in the configuration */
+		list_for_each_entry(func, &config->functions, list) {
+			/* Check if function name contains "uvc" */
+			if (func->name && strstr(func->name, "uvc")) {
+				dev_dbg(dwc->dev, "UVC function detected: %s\n",
+					func->name);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 static int entry_usb_ep_set_maxpacket_limit(struct kretprobe_instance *ri,
 				struct pt_regs *regs)
 {
@@ -124,21 +166,48 @@ static int entry_dwc3_gadget_run_stop(struct kretprobe_instance *ri,
 		 * DWC3 gadget IRQ uses a threaded handler which normally runs
 		 * at SCHED_FIFO priority.  If it gets busy processing a high
 		 * volume of events (usually EP events due to heavy traffic) it
-		 * can potentially starve non-RT taks from running and trigger
+		 * can potentially starve non-RT tasks from running and trigger
 		 * RT throttling in the scheduler; on some build configs this
-		 * will panic.  So lower the thread's priority to run as non-RT
-		 * (with a nice value equivalent to a high-priority workqueue).
-		 * It has been found to not have noticeable performance impact.
+		 * will panic.
+		 *
+		 * However, UVC (USB Video Class) requires real-time priority
+		 * to avoid frame drops and glitches. So we conditionally set
+		 * the scheduler policy based on whether UVC is in the composition:
+		 * - UVC present: Use SCHED_FIFO with highest priority
+		 * - UVC absent: Use SCHED_NORMAL to avoid RT throttling
 		 */
 		struct irq_desc *irq_desc = irq_to_desc(dwc->irq_gadget);
 		struct irqaction *action = irq_desc ? irq_desc->action : NULL;
+		bool uvc_active;
 
 		dwc3_msm_notify_event(dwc, DWC3_GSI_EVT_BUF_SETUP, 0);
+
+		/* Check if UVC function is present in the composition */
+		uvc_active = is_uvc_function_active(dwc);
+
 		for ( ; action != NULL; action = action->next) {
 			if (action->thread) {
-				dev_info(dwc->dev, "Set IRQ thread:%s pid:%d to SCHED_NORMAL prio\n",
-					action->thread->comm, action->thread->pid);
-				sched_set_normal(action->thread, MIN_NICE);
+				if (uvc_active) {
+					/*
+					 * UVC needs real-time priority to avoid frame drops.
+					 * Use sched_set_fifo() which sets SCHED_FIFO.
+					 */
+					sched_set_fifo(action->thread);
+					dev_info(dwc->dev,
+						"Set IRQ thread:%s pid:%d to SCHED_FIFO low priority (UVC active)\n",
+						action->thread->comm,
+						action->thread->pid);
+				} else {
+					/*
+					 * Non-UVC composition: use SCHED_NORMAL to avoid
+					 * RT throttling issues.
+					 */
+					sched_set_normal(action->thread, MIN_NICE);
+					dev_info(dwc->dev,
+						"Set IRQ thread:%s pid:%d to SCHED_NORMAL (no UVC)\n",
+						action->thread->comm,
+						action->thread->pid);
+				}
 				break;
 			}
 		}
@@ -380,4 +449,3 @@ void dwc3_msm_kretprobe_exit(void)
 	for (i = 0; i < ARRAY_SIZE(dwc3_msm_probes); i++)
 		unregister_kretprobe(&dwc3_msm_probes[i]);
 }
-

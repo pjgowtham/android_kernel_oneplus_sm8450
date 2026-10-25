@@ -800,10 +800,10 @@ struct haptics_play_info {
 struct haptics_hw_config {
 	struct brake_cfg	brake;
 	u32			vmax_mv;
+	u32			fifo_vmax_mv;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	u32			cl_vmax_mv;
 	u32			cali_time;
-	u32			fifo_vmax_mv;
 	u32			old_steady_vmax_mv;
 	u32			vibrator_type;
 	u32			vbat_low_soc;
@@ -3184,11 +3184,7 @@ static int haptics_init_custom_effect(struct haptics_chip *chip)
 	chip->custom_effect->pattern = NULL;
 	chip->custom_effect->brake = NULL;
 	chip->custom_effect->id = UINT_MAX;
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	chip->custom_effect->vmax_mv = chip->config.fifo_vmax_mv;
-#else
-	chip->custom_effect->vmax_mv = chip->config.vmax_mv;
-#endif
 	chip->custom_effect->t_lra_us = chip->config.t_lra_us;
 	chip->custom_effect->src = FIFO;
 	chip->custom_effect->auto_res_disable = true;
@@ -5385,6 +5381,11 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		goto free_pbs;
 	}
 
+	rc = of_property_read_u32(node, "qcom,fifo-vmax-mv", &config->fifo_vmax_mv);
+	if (rc || config->fifo_vmax_mv >= MAX_VMAX_MV) {
+		config->fifo_vmax_mv = config->vmax_mv;
+	}
+
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	chip->cal_data_restore = of_property_read_bool(node, "qcom,cal-data-restore");
 	if (!chip->cal_data_restore) {
@@ -5394,11 +5395,6 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 	rc = of_property_read_u32(node, "qcom,cl-vmax-mv", &config->cl_vmax_mv);
 	if (rc || config->cl_vmax_mv >= MAX_VMAX_MV) {
 		config->cl_vmax_mv = DEFAULT_CL_VMAX_MV;
-	}
-
-	rc = of_property_read_u32(node, "qcom,fifo-vmax-mv", &config->fifo_vmax_mv);
-	if (rc || config->fifo_vmax_mv >= MAX_VMAX_MV) {
-		config->fifo_vmax_mv = DEFAULT_FIFO_VMAX;
 	}
 
 	rc = of_property_read_u32(node, "qcom,old-steady-vmax-mv", &config->old_steady_vmax_mv);

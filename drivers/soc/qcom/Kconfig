@@ -239,10 +239,27 @@ config QCOM_PCIE_PDC
 	  type and enable or disable them so that during system sleep can exit without
 	  involving CPU subsystem.
 
+config QCOM_PD_MAPPER
+	tristate "Qualcomm Protection Domain Mapper"
+	select QCOM_QMI_HELPERS
+	select QCOM_PDR_MSG
+	select AUXILIARY_BUS
+	depends on NET && QRTR && (ARCH_QCOM || COMPILE_TEST)
+	default QCOM_RPROC_COMMON
+	help
+	  The Protection Domain Mapper maps registered services to the domains
+	  and instances handled by the remote DSPs. This is a kernel-space
+	  implementation of the service. It is a simpler alternative to the
+	  userspace daemon.
+
 config QCOM_PDR_HELPERS
 	tristate
 	select QCOM_QMI_HELPERS
+	select QCOM_PDR_MSG
 	depends on NET
+
+config QCOM_PDR_MSG
+	tristate
 
 config QCOM_PANIC_ON_PDR_NOTIF_TIMEOUT
 	bool "Trigger kernel panic when PDR notification timeout expires"
@@ -1270,5 +1287,14 @@ config QTI_CRYPTO_FDE
           different storage layers such as UFS and EMMC for full disk hardware
           encryption. this is control only for enable inline crypto engine for Full
           Disk Encryption.
+
+config SENSORS_SSC
+	tristate "Enable Sensors Driver Support for SSC"
+	depends on REMOTEPROC
+	help
+	  Say y or m here to enable Snapdragon Sensor Core(SSC)
+	  support for Qualcomm Technologies, Inc SoCs. SSC is used for
+	  exercising sensor use-cases. This driver loads firmware files
+	  for SSC and also does time synchronization with DSP clock.
 
 endmenu
