@@ -1,1 +1,1 @@
-../../../../../sm8750-modules/oplus/kernel/dft/include/olc.h
+../../../../../sm8450-modules/oplus/kernel/dft/include/olc.h

@@ -1,1 +1,1 @@
-../../../../sm8750-modules/qcom/opensource/display-drivers/oplus/common/trackpoint/oplus_trackpoint_report.h
+../../../../sm8450-modules/qcom/opensource/display-drivers/oplus/common/trackpoint/oplus_trackpoint_report.h
