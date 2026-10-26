@@ -694,6 +694,16 @@ static struct dload_struct __iomem *diag_dload;
 
 static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+static bool (*oplus_ignore_usb_notify)(void);
+
+void oplus_dwc3_config_usbphy_pfunc(bool (*pfunc)(void))
+{
+	oplus_ignore_usb_notify = pfunc;
+}
+EXPORT_SYMBOL(oplus_dwc3_config_usbphy_pfunc);
+#endif
+
 static inline void dwc3_msm_ep_writel(void __iomem *base, u32 offset, u32 value)
 {
 	writel_relaxed(value, base + offset - DWC3_GLOBALS_REGS_START);
@@ -5099,6 +5109,13 @@ static int dwc3_msm_set_role(struct dwc3_msm *mdwc, enum usb_role role)
 		return -EINVAL;
 
 	mutex_lock(&mdwc->role_switch_mutex);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (role != USB_ROLE_NONE && oplus_ignore_usb_notify &&
+	    oplus_ignore_usb_notify()) {
+		mutex_unlock(&mdwc->role_switch_mutex);
+		return 0;
+	}
+#endif
 	cur_role = dwc3_msm_get_role(mdwc);
 
 	dbg_log_string("cur_role:%s new_role:%s refcnt:%d\n", dwc3_msm_usb_role_string(cur_role),
