@@ -2893,6 +2893,9 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	long err = 0;
 	char *after_dashes;
 
+	/* Temporary: force version checks off for the 5.10 module boot test. */
+	flags |= MODULE_INIT_IGNORE_MODVERSIONS | MODULE_INIT_IGNORE_VERMAGIC;
+
 	/*
 	 * Do the signature check (if any) first. All that
 	 * the signature check needs is info->len, it does

@@ -154,7 +154,7 @@ static ssize_t store_##name(struct kobject *kobj,			\
 		i++;							\
 	}								\
 									\
-	pr_info("Input threshold :%lu for cluster :%lu\n", msg[1], msg[0]);\
+	pr_info("Input threshold :%u for cluster :%u\n", msg[1], msg[0]);\
 	ret = ops->set_##name(ph, msg);					\
 out:									\
 	kfree(s_orig);							\

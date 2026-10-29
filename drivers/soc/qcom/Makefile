@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-CFLAGS_fsa4480-i2c.o += -I$(srctree)/drivers/usb/typec/tcpc/inc \
+CFLAGS_fsa4480-i2c.o += -I$(srctree)/drivers/power/oplus/pd_ext/inc \
 			-I$(srctree)/drivers/power/oplus/v2/include
 CFLAGS_wcd939x-i2c.o += -I$(srctree)/drivers/power/oplus/v2/include
 CFLAGS_rpmh-rsc.o := -I$(src)

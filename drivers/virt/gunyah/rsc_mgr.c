@@ -854,6 +854,7 @@ static void gunyah_rm_remove(struct platform_device *pdev)
 
 static const struct of_device_id gunyah_rm_of_match[] = {
 	{ .compatible = "gunyah-resource-manager" },
+	{ .compatible = "qcom,resource-manager-1-0" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, gunyah_rm_of_match);

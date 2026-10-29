@@ -1091,7 +1091,7 @@ static int fsa4480_probe(struct i2c_client *i2c)
 				goto err_data;
 			}
 		}
-		rc = register_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->nb, TCP_NOTIFY_TYPE_USB);
+		rc = register_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->ucsi_nb, TCP_NOTIFY_TYPE_USB);
 		if (rc) {
 			dev_err(fsa_priv->dev, "%s: ucsi glink notifier registration failed: %d\n",
 				__func__, rc);
@@ -1185,7 +1185,7 @@ static void fsa4480_remove(struct i2c_client *i2c)
 /*add for 3rd protocal stack notifier*/
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 	if (fsa_priv->tcpc) {
-		ret = unregister_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->nb, TCP_NOTIFY_TYPE_ALL);
+		ret = unregister_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->ucsi_nb, TCP_NOTIFY_TYPE_USB);
 		if (ret < 0) {
 			pr_err("%s unregister tcpc notifier fail\n", __func__);
 		}

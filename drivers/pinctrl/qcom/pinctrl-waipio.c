@@ -1966,4 +1966,6 @@ module_exit(waipio_pinctrl_exit);
 MODULE_DESCRIPTION("QTI waipio pinctrl driver");
 MODULE_LICENSE("GPL v2");
 MODULE_DEVICE_TABLE(of, waipio_pinctrl_of_match);
+#if IS_ENABLED(CONFIG_QCOM_TLMM_VM_IRQCHIP)
 MODULE_SOFTDEP("pre: qcom_tlmm_vm_irqchip");
+#endif
