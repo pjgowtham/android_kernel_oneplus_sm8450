@@ -8401,7 +8401,8 @@ static int haptics_probe(struct platform_device *pdev)
 	}
 
 	chip->hboost_nb.notifier_call = haptics_boost_notifier;
-	register_hboost_event_notifier(&chip->hboost_nb);
+	if (IS_ENABLED(CONFIG_OPLUS_ADSP_CHARGER))
+		register_hboost_event_notifier(&chip->hboost_nb);
 
 	if (chip->hw_type == HAP530_HV) {
 		chip->lpass_ssr_nb.notifier_call = haptics_lpass_ssr_notifier;
@@ -8490,7 +8491,8 @@ static int haptics_remove(struct platform_device *pdev)
 	if (chip->hw_type == HAP530_HV)
 		qcom_unregister_ssr_notifier(chip->lpass_ssr_handle, &chip->lpass_ssr_nb);
 
-	unregister_hboost_event_notifier(&chip->hboost_nb);
+	if (IS_ENABLED(CONFIG_OPLUS_ADSP_CHARGER))
+		unregister_hboost_event_notifier(&chip->hboost_nb);
 	class_unregister(&chip->hap_class);
 	haptics_remove_debugfs(chip);
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
